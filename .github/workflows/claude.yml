@@ -52,6 +52,15 @@ jobs:
           app-id: ${{ secrets.CLAUDE_APP_ID }}
           private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
 
+      - name: Verify App Token
+        run: |
+          if [ -z "${{ steps.app-token.outputs.token }}" ]; then
+            echo "::error::GitHub App token was not generated. Check CLAUDE_APP_ID and CLAUDE_APP_PRIVATE_KEY secrets."
+            echo "Falling back to GITHUB_TOKEN which may have limited permissions."
+          else
+            echo "GitHub App token generated successfully"
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
