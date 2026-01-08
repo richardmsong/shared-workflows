@@ -1,7 +1,14 @@
 # Reusable workflow for automated code review via Claude
+# Can also be triggered directly on this repo for PRs
 name: Claude Code Review
 
 on:
+  # Direct trigger for this repository - review PRs automatically
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+  # Reusable workflow trigger for other repositories
+  # Supports `secrets: inherit` - caller can pass all secrets automatically
   workflow_call:
     inputs:
       review-prompt:
