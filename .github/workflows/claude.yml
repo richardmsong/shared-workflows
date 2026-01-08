@@ -1,13 +1,24 @@
-# Workflow for Claude AI interaction on issues/PRs/comments
+# Reusable workflow for Claude AI interaction on issues/PRs/comments
 name: Claude Code
 
 on:
-  issues:
-    types: [opened, reopened, edited]
-  pull_request:
-    types: [opened, reopened, synchronize]
-  issue_comment:
-    types: [created, edited]
+  workflow_call:
+    inputs:
+      allowed-tools:
+        description: 'Allowed tools for Claude Code (comma-separated)'
+        required: false
+        type: string
+        default: 'Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file'
+    secrets:
+      CLAUDE_APP_ID:
+        description: 'Claude GitHub App ID'
+        required: false
+      CLAUDE_APP_PRIVATE_KEY:
+        description: 'Claude GitHub App private key'
+        required: false
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'Claude Code OAuth token'
+        required: true
 
 jobs:
   claude:
@@ -37,7 +48,4 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app-token.outputs.token || github.token }}
-          additional_permissions: |
-            actions: read
-          claude_args: |
-            --allowedTools "Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file"
+          claude_args: --allowedTools "${{ inputs.allowed-tools }}"
