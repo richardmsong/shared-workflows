@@ -1,0 +1,165 @@
+# Reusable workflow to automatically trigger Claude iteration on failed PR checks
+#
+# This workflow triggers when checks fail on auto-created PRs (claude/* branches)
+# and automatically comments with @claude to trigger iteration and fixes.
+#
+# Features:
+# - Only acts on PRs from branches matching the configured pattern
+# - Detects failed check runs
+# - Prevents infinite loops with configurable max retry attempts
+# - Uses Claude GitHub App token to post comments
+#
+# REQUIRED SECRETS: CLAUDE_APP_ID and CLAUDE_APP_PRIVATE_KEY
+#
+name: Auto Iterate PR
+
+on:
+  workflow_call:
+    inputs:
+      branch-pattern:
+        description: 'Branch pattern to trigger auto-iteration (regex)'
+        required: false
+        type: string
+        default: '^claude/'
+      max-retries:
+        description: 'Maximum number of auto-iteration attempts'
+        required: false
+        type: number
+        default: 3
+    secrets:
+      CLAUDE_APP_ID:
+        description: 'Claude GitHub App ID'
+        required: false
+      CLAUDE_APP_PRIVATE_KEY:
+        description: 'Claude GitHub App private key'
+        required: false
+
+jobs:
+  trigger-iteration:
+    name: Trigger Claude Iteration
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # Generate token from Claude GitHub App
+      - name: Generate Claude GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.CLAUDE_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
+
+      - name: Get PR information
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          # Get the PR number from the workflow run
+          PR_NUMBER=$(gh api \
+            "/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}" \
+            --jq '.pull_requests[0].number')
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "No PR found for this workflow run"
+            exit 0
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+          # Get PR details including head branch
+          PR_DATA=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER")
+          HEAD_BRANCH=$(echo "$PR_DATA" | jq -r '.head.ref')
+
+          echo "head_branch=$HEAD_BRANCH" >> $GITHUB_OUTPUT
+          echo "Found PR #$PR_NUMBER from branch $HEAD_BRANCH"
+
+      - name: Check if branch matches pattern
+        id: check-branch
+        if: steps.pr-info.outputs.pr_number != ''
+        run: |
+          HEAD_BRANCH="${{ steps.pr-info.outputs.head_branch }}"
+          PATTERN="${{ inputs.branch-pattern }}"
+
+          if echo "$HEAD_BRANCH" | grep -qE "$PATTERN"; then
+            echo "Branch $HEAD_BRANCH matches pattern $PATTERN"
+            echo "matches=true" >> $GITHUB_OUTPUT
+          else
+            echo "Branch $HEAD_BRANCH does not match pattern $PATTERN"
+            echo "matches=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Count previous Claude iterations
+        id: count-iterations
+        if: steps.check-branch.outputs.matches == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+
+          # Count comments from claude-code-for-* that were triggered by auto-iteration
+          # Look for comments containing specific markers that indicate auto-iteration
+          ITERATION_COUNT=$(gh api \
+            "/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq '[.[] | select(.user.login | startswith("claude-code-for-")) | select(.body | contains("Auto-iteration"))] | length')
+
+          echo "iteration_count=$ITERATION_COUNT" >> $GITHUB_OUTPUT
+          echo "Found $ITERATION_COUNT previous auto-iterations"
+
+      - name: Check if max retries exceeded
+        id: check-retries
+        if: steps.check-branch.outputs.matches == 'true'
+        run: |
+          ITERATION_COUNT="${{ steps.count-iterations.outputs.iteration_count }}"
+          MAX_RETRIES="${{ inputs.max-retries }}"
+
+          if [ "$ITERATION_COUNT" -ge "$MAX_RETRIES" ]; then
+            echo "Max retries ($MAX_RETRIES) exceeded. Current count: $ITERATION_COUNT"
+            echo "exceeded=true" >> $GITHUB_OUTPUT
+          else
+            echo "Retries within limit. Current count: $ITERATION_COUNT, Max: $MAX_RETRIES"
+            echo "exceeded=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment to trigger Claude iteration
+        if: steps.check-branch.outputs.matches == 'true' && steps.check-retries.outputs.exceeded == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+          WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
+          WORKFLOW_URL="${{ github.event.workflow_run.html_url }}"
+          ITERATION_COUNT="${{ steps.count-iterations.outputs.iteration_count }}"
+          NEXT_ITERATION=$((ITERATION_COUNT + 1))
+
+          gh pr comment "$PR_NUMBER" --body "👋 @claude
+
+**Auto-iteration #$NEXT_ITERATION**: The [$WORKFLOW_NAME workflow]($WORKFLOW_URL) failed. Please review the failures and fix the issues.
+
+<details>
+<summary>Workflow Details</summary>
+
+- **Workflow**: $WORKFLOW_NAME
+- **Run**: $WORKFLOW_URL
+- **Conclusion**: ${{ github.event.workflow_run.conclusion }}
+- **Branch**: ${{ steps.pr-info.outputs.head_branch }}
+
+</details>"
+
+      - name: Comment max retries reached
+        if: steps.check-branch.outputs.matches == 'true' && steps.check-retries.outputs.exceeded == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+          WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
+          WORKFLOW_URL="${{ github.event.workflow_run.html_url }}"
+          MAX_RETRIES="${{ inputs.max-retries }}"
+
+          gh pr comment "$PR_NUMBER" --body "⚠️ **Auto-iteration limit reached**
+
+The [$WORKFLOW_NAME workflow]($WORKFLOW_URL) failed, but the maximum number of auto-iteration attempts ($MAX_RETRIES) has been reached.
+
+Manual intervention may be required to fix the remaining issues."

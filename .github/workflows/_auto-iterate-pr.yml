@@ -1,0 +1,15 @@
+# Internal workflow - automatically triggers Claude iteration on failed PR checks
+name: Auto Iterate PR (Internal)
+
+on:
+  workflow_run:
+    workflows: ["*"]  # Trigger on any workflow completion
+    types:
+      - completed
+
+jobs:
+  auto-iterate:
+    # Only run if the workflow failed
+    if: github.event.workflow_run.conclusion == 'failure'
+    uses: ./.github/workflows/auto-iterate-pr.yml
+    secrets: inherit
