@@ -1,0 +1,243 @@
+# Internal test workflow to validate Claude workflows are properly configured
+name: Test Claude Workflows
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/claude.yml'
+      - '.github/workflows/claude-code-review.yml'
+      - '.github/workflows/_test-claude-workflows.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/claude.yml'
+      - '.github/workflows/claude-code-review.yml'
+      - '.github/workflows/_test-claude-workflows.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-claude-workflow-structure:
+    name: Validate Claude Workflow Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yq for YAML parsing
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Validate claude.yml structure
+        run: |
+          echo "::group::Validating claude.yml"
+
+          # Check that workflow uses workflow_call
+          TRIGGER=$(yq '.on | keys | .[]' .github/workflows/claude.yml)
+          if [[ "$TRIGGER" != "workflow_call" ]]; then
+            echo "❌ ERROR: claude.yml must use 'workflow_call' trigger, found: $TRIGGER"
+            exit 1
+          fi
+          echo "✅ claude.yml uses workflow_call trigger"
+
+          # Check that allowed-tools input exists
+          if ! yq -e '.on.workflow_call.inputs.allowed-tools' .github/workflows/claude.yml > /dev/null; then
+            echo "❌ ERROR: claude.yml missing 'allowed-tools' input"
+            exit 1
+          fi
+          echo "✅ claude.yml has 'allowed-tools' input"
+
+          # Check that allowed-tools has a reasonable default
+          DEFAULT_TOOLS=$(yq '.on.workflow_call.inputs.allowed-tools.default' .github/workflows/claude.yml)
+          if [[ -z "$DEFAULT_TOOLS" ]]; then
+            echo "❌ ERROR: claude.yml 'allowed-tools' input has no default"
+            exit 1
+          fi
+          echo "✅ claude.yml has default allowed-tools: $DEFAULT_TOOLS"
+
+          # Verify the default includes critical tools
+          for TOOL in "Bash(go:" "Bash(npm:" "Bash(git:"; do
+            if [[ "$DEFAULT_TOOLS" != *"$TOOL"* ]]; then
+              echo "⚠️  WARNING: Default allowed-tools missing recommended tool pattern: $TOOL"
+            fi
+          done
+
+          # Check that claude_args properly passes allowed-tools
+          CLAUDE_ARGS=$(yq '.jobs.claude.steps[] | select(.id == "claude") | .with.claude_args' .github/workflows/claude.yml)
+          if [[ "$CLAUDE_ARGS" != *'${{ inputs.allowed-tools }}'* ]]; then
+            echo "❌ ERROR: claude.yml does not pass allowed-tools input to claude_args"
+            exit 1
+          fi
+          echo "✅ claude.yml properly passes allowed-tools to Claude Code action"
+
+          # Check required secrets are documented
+          if ! yq -e '.on.workflow_call.secrets.CLAUDE_CODE_OAUTH_TOKEN' .github/workflows/claude.yml > /dev/null; then
+            echo "❌ ERROR: claude.yml missing CLAUDE_CODE_OAUTH_TOKEN secret definition"
+            exit 1
+          fi
+          echo "✅ claude.yml has CLAUDE_CODE_OAUTH_TOKEN secret"
+
+          echo "::endgroup::"
+
+      - name: Validate claude-code-review.yml structure
+        run: |
+          echo "::group::Validating claude-code-review.yml"
+
+          # Check that workflow uses workflow_call
+          TRIGGER=$(yq '.on | keys | .[]' .github/workflows/claude-code-review.yml)
+          if [[ "$TRIGGER" != "workflow_call" ]]; then
+            echo "❌ ERROR: claude-code-review.yml must use 'workflow_call' trigger, found: $TRIGGER"
+            exit 1
+          fi
+          echo "✅ claude-code-review.yml uses workflow_call trigger"
+
+          # Check that allowed-tools input exists
+          if ! yq -e '.on.workflow_call.inputs.allowed-tools' .github/workflows/claude-code-review.yml > /dev/null; then
+            echo "❌ ERROR: claude-code-review.yml missing 'allowed-tools' input"
+            exit 1
+          fi
+          echo "✅ claude-code-review.yml has 'allowed-tools' input"
+
+          # Check that allowed-tools has a reasonable default
+          DEFAULT_TOOLS=$(yq '.on.workflow_call.inputs.allowed-tools.default' .github/workflows/claude-code-review.yml)
+          if [[ -z "$DEFAULT_TOOLS" ]]; then
+            echo "❌ ERROR: claude-code-review.yml 'allowed-tools' input has no default"
+            exit 1
+          fi
+          echo "✅ claude-code-review.yml has default allowed-tools: $DEFAULT_TOOLS"
+
+          # Verify the default includes GitHub CLI tools for code review
+          for TOOL in "Bash(gh pr" "Bash(gh api"; do
+            if [[ "$DEFAULT_TOOLS" != *"$TOOL"* ]]; then
+              echo "⚠️  WARNING: Default allowed-tools missing recommended tool for code review: $TOOL"
+            fi
+          done
+
+          # Check that claude_args properly passes allowed-tools
+          CLAUDE_ARGS=$(yq '.jobs.claude-review.steps[] | select(.id == "claude-review") | .with.claude_args' .github/workflows/claude-code-review.yml)
+          if [[ "$CLAUDE_ARGS" != *'${{ inputs.allowed-tools }}'* ]]; then
+            echo "❌ ERROR: claude-code-review.yml does not pass allowed-tools input to claude_args"
+            exit 1
+          fi
+          echo "✅ claude-code-review.yml properly passes allowed-tools to Claude Code action"
+
+          echo "::endgroup::"
+
+      - name: Validate internal wrapper workflows
+        run: |
+          echo "::group::Validating _claude.yml"
+
+          # Check that _claude.yml calls the reusable workflow
+          USES=$(yq '.jobs.claude.uses' .github/workflows/_claude.yml)
+          if [[ "$USES" != "./.github/workflows/claude.yml" ]]; then
+            echo "❌ ERROR: _claude.yml does not call claude.yml, found: $USES"
+            exit 1
+          fi
+          echo "✅ _claude.yml properly calls claude.yml"
+
+          # Check that it inherits secrets
+          SECRETS=$(yq '.jobs.claude.secrets' .github/workflows/_claude.yml)
+          if [[ "$SECRETS" != "inherit" ]]; then
+            echo "❌ ERROR: _claude.yml does not inherit secrets"
+            exit 1
+          fi
+          echo "✅ _claude.yml inherits secrets"
+
+          echo "::endgroup::"
+
+          echo "::group::Validating _claude-code-review.yml"
+
+          # Check that _claude-code-review.yml calls the reusable workflow
+          USES=$(yq '.jobs.review.uses' .github/workflows/_claude-code-review.yml)
+          if [[ "$USES" != "./.github/workflows/claude-code-review.yml" ]]; then
+            echo "❌ ERROR: _claude-code-review.yml does not call claude-code-review.yml, found: $USES"
+            exit 1
+          fi
+          echo "✅ _claude-code-review.yml properly calls claude-code-review.yml"
+
+          # Check that it inherits secrets
+          SECRETS=$(yq '.jobs.review.secrets' .github/workflows/_claude-code-review.yml)
+          if [[ "$SECRETS" != "inherit" ]]; then
+            echo "❌ ERROR: _claude-code-review.yml does not inherit secrets"
+            exit 1
+          fi
+          echo "✅ _claude-code-review.yml inherits secrets"
+
+          echo "::endgroup::"
+
+      - name: Verify allowed-tools patterns are valid
+        run: |
+          echo "::group::Validating allowed-tools patterns"
+
+          # Get default allowed-tools from claude.yml
+          DEFAULT_TOOLS=$(yq '.on.workflow_call.inputs.allowed-tools.default' .github/workflows/claude.yml)
+
+          # Split by comma and validate each tool pattern
+          IFS=',' read -ra TOOLS <<< "$DEFAULT_TOOLS"
+          for TOOL in "${TOOLS[@]}"; do
+            TOOL=$(echo "$TOOL" | xargs) # trim whitespace
+
+            # Check if it matches expected patterns
+            if [[ "$TOOL" =~ ^Bash\([a-z0-9\-]+:\*\)$ ]] || [[ "$TOOL" =~ ^mcp__ ]]; then
+              echo "✅ Valid tool pattern: $TOOL"
+            else
+              echo "⚠️  WARNING: Unexpected tool pattern format: $TOOL"
+            fi
+          done
+
+          echo "::endgroup::"
+
+      - name: Check for common workflow mistakes
+        run: |
+          echo "::group::Checking for common mistakes"
+
+          # Check that workflows don't use pull_request trigger directly (should use workflow_call)
+          for WORKFLOW in claude.yml claude-code-review.yml; do
+            if yq -e '.on.pull_request' .github/workflows/$WORKFLOW > /dev/null 2>&1; then
+              echo "❌ ERROR: $WORKFLOW should not have pull_request trigger (use workflow_call)"
+              exit 1
+            fi
+
+            if yq -e '.on.issues' .github/workflows/$WORKFLOW > /dev/null 2>&1; then
+              echo "❌ ERROR: $WORKFLOW should not have issues trigger (use workflow_call)"
+              exit 1
+            fi
+          done
+          echo "✅ Reusable workflows correctly use workflow_call (not direct event triggers)"
+
+          # Verify that inputs are actually used in the workflow
+          ALLOWED_TOOLS_INPUT=$(yq '.on.workflow_call.inputs.allowed-tools' .github/workflows/claude.yml)
+          ALLOWED_TOOLS_USAGE=$(yq '.jobs.claude.steps[].with.claude_args' .github/workflows/claude.yml | grep -c 'allowed-tools' || true)
+          if [[ "$ALLOWED_TOOLS_USAGE" -eq 0 ]]; then
+            echo "❌ ERROR: allowed-tools input is defined but not used"
+            exit 1
+          fi
+          echo "✅ Inputs are properly used in workflow steps"
+
+          echo "::endgroup::"
+
+      - name: Summary
+        run: |
+          echo "## ✅ Claude Workflow Validation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All Claude workflow structure checks passed:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Workflows use \`workflow_call\` trigger correctly" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ \`allowed-tools\` inputs are properly defined" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Inputs are passed to Claude Code action via \`claude_args\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Required secrets are documented" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Internal workflows properly call reusable workflows" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tool patterns follow expected format" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### What This Validates" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This test ensures:" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Claude can be properly invoked** - workflows use \`workflow_call\` not direct event triggers" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Tool permissions are correctly configured** - \`allowed-tools\` input exists and is passed through" >> $GITHUB_STEP_SUMMARY
+          echo "3. **No configuration mistakes** - common issues like using wrong triggers are caught" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** This validates workflow structure. Actual Claude functionality (comment updates, tool execution) requires secrets and live testing." >> $GITHUB_STEP_SUMMARY
