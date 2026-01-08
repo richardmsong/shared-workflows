@@ -27,7 +27,7 @@ jobs:
     with:
       working-directory: 'test-fixtures/kubebuilder-minimal'
       go-version-file: 'go.mod'
-      push-image: false
+      push-image: true
       run-tests: true
       run-lint: true
     secrets: inherit
