@@ -1,7 +1,18 @@
 # Reusable workflow for Claude AI interaction on issues/PRs/comments
+# Can also be triggered directly on this repo via issues, PRs, and comments
 name: Claude Code
 
 on:
+  # Direct triggers for this repository
+  issues:
+    types: [opened, reopened, edited]
+  pull_request:
+    types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created, edited]
+
+  # Reusable workflow trigger for other repositories
+  # Supports `secrets: inherit` - caller can pass all secrets automatically
   workflow_call:
     inputs:
       allowed-tools:
