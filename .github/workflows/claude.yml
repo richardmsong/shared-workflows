@@ -49,6 +49,7 @@ jobs:
       - name: Setup Claude Stop Hook
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
           mkdir -p ~/.config/claude-code
           cat > ~/.config/claude-code/settings.json <<'EOF'
@@ -57,7 +58,7 @@ jobs:
               "Stop": [
                 {
                   "type": "command",
-                  "command": "bash -c 'BRANCH=\"${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}\" && RUN_DATA=$(gh run list --repo \"$GITHUB_REPOSITORY\" --branch \"$BRANCH\" --limit 1 --json status,conclusion,workflowName,htmlUrl) && STATUS=$(echo \"$RUN_DATA\" | jq -r \".[0].status // empty\") && CONCLUSION=$(echo \"$RUN_DATA\" | jq -r \".[0].conclusion // empty\") && WORKFLOW=$(echo \"$RUN_DATA\" | jq -r \".[0].workflowName // empty\") && URL=$(echo \"$RUN_DATA\" | jq -r \".[0].htmlUrl // empty\") && if [ \"$STATUS\" != \"completed\" ] && [ -n \"$STATUS\" ]; then echo \"⏳ CI pipeline \\\"$WORKFLOW\\\" is still running on branch $BRANCH\" >&2; echo \"View: $URL\" >&2; exit 2; elif [ \"$CONCLUSION\" != \"success\" ] && [ -n \"$CONCLUSION\" ]; then echo \"❌ CI pipeline \\\"$WORKFLOW\\\" failed with status: $CONCLUSION\" >&2; echo \"View: $URL\" >&2; echo \"\" >&2; echo \"Please investigate the failure and fix any issues before exiting.\" >&2; exit 1; else echo \"✅ CI pipelines passed\"; exit 0; fi'"
+                  "command": "bash -c 'if [ -z \"$PR_NUMBER\" ]; then echo \"✅ No PR context, allowing exit\"; exit 0; fi && CHECK_DATA=$(gh pr checks \"$PR_NUMBER\" --repo \"$GITHUB_REPOSITORY\" --json name,state,conclusion,detailsUrl 2>/dev/null) && if [ $? -ne 0 ] || [ \"$CHECK_DATA\" = \"[]\" ]; then echo \"✅ No checks found for PR #$PR_NUMBER, allowing exit\"; exit 0; fi && PENDING=$(echo \"$CHECK_DATA\" | jq -r \"[.[] | select(.state != \\\"COMPLETED\\\")] | length\") && FAILED=$(echo \"$CHECK_DATA\" | jq -r \"[.[] | select(.state == \\\"COMPLETED\\\" and .conclusion != \\\"SUCCESS\\\" and .conclusion != \\\"NEUTRAL\\\" and .conclusion != \\\"SKIPPED\\\")] | length\") && FAILED_CHECKS=$(echo \"$CHECK_DATA\" | jq -r \"[.[] | select(.state == \\\"COMPLETED\\\" and .conclusion != \\\"SUCCESS\\\" and .conclusion != \\\"NEUTRAL\\\" and .conclusion != \\\"SKIPPED\\\")] | map(\\\"  - \\\" + .name + \\\" (\\\" + .conclusion + \\\"): \\\" + .detailsUrl) | join(\\\"\\\\n\\\")\") && if [ \"$PENDING\" -gt 0 ]; then echo \"⏳ $PENDING check(s) still running on PR #$PR_NUMBER\" >&2; exit 2; elif [ \"$FAILED\" -gt 0 ]; then echo \"❌ $FAILED check(s) failed on PR #$PR_NUMBER:\" >&2; echo \"\" >&2; echo \"$FAILED_CHECKS\" >&2; echo \"\" >&2; echo \"Please investigate the failures and fix any issues before exiting.\" >&2; exit 1; else echo \"✅ All PR checks passed\"; exit 0; fi'"
                 }
               ]
             }
