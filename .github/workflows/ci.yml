@@ -65,9 +65,12 @@ on:
         description: 'Docker image tags'
         value: ${{ jobs.docker.outputs.tags }}
     secrets:
-      REGISTRY_TOKEN:
-        description: 'Token for container registry authentication (defaults to GITHUB_TOKEN)'
-        required: false
+      CLAUDE_APP_ID:
+        description: 'GitHub App ID for authentication'
+        required: true
+      CLAUDE_APP_PRIVATE_KEY:
+        description: 'GitHub App private key for authentication'
+        required: true
 
 jobs:
   test:
@@ -161,6 +164,13 @@ jobs:
       REGISTRY: ${{ inputs.registry }}
       IMAGE_NAME: ${{ inputs.image-name || github.repository }}
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CLAUDE_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -222,7 +232,7 @@ jobs:
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
+          password: ${{ steps.app-token.outputs.token }}
 
       - name: Build and push Docker image
         run: make ${{ inputs.docker-build-target }}
