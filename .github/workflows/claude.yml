@@ -39,6 +39,10 @@ on:
 jobs:
   claude:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - name: Generate GitHub App Token
         id: app-token
