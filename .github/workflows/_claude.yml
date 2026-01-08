@@ -1,0 +1,15 @@
+# Internal workflow - triggers Claude on issues/PRs/comments for this repo
+name: Claude Code (Internal)
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+  pull_request:
+    types: [opened, reopened, synchronize]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  claude:
+    uses: ./.github/workflows/claude.yml
+    secrets: inherit

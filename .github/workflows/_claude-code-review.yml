@@ -1,0 +1,11 @@
+# Internal workflow - triggers Claude code review on PRs for this repo
+name: Claude Code Review (Internal)
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  review:
+    uses: ./.github/workflows/claude-code-review.yml
+    secrets: inherit
