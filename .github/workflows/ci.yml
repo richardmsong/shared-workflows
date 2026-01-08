@@ -152,9 +152,6 @@ jobs:
       always() &&
       (needs.test.result == 'success' || needs.test.result == 'skipped') &&
       (needs.lint.result == 'success' || needs.lint.result == 'skipped')
-    permissions:
-      contents: read
-      packages: write
     outputs:
       tags: ${{ steps.tags.outputs.tags }}
     defaults:
@@ -225,7 +222,7 @@ jobs:
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ secrets.REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
 
       - name: Build and push Docker image
         run: make ${{ inputs.docker-build-target }}
