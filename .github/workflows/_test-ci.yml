@@ -21,13 +21,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-ci:
-    name: Test CI Workflow
+  ci:
+    name: CI
     uses: ./.github/workflows/ci.yml
     with:
       working-directory: 'test-fixtures/kubebuilder-minimal'
       go-version-file: 'go.mod'
-      push-image: false
+      push-image: true
       run-tests: true
       run-lint: true
     secrets: inherit

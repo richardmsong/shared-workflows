@@ -12,6 +12,27 @@ Reusable GitHub Actions workflows for Go/kubebuilder projects that publish Docke
 | [`claude.yml`](#claudeyml) | Claude AI interaction on issues/PRs/comments |
 | [`claude-code-review.yml`](#claude-code-reviewyml) | Automated code review via Claude |
 
+## Workflow Naming Convention
+
+### Underscore Prefix for Internal Workflows
+
+Workflows prefixed with an underscore (`_`) are **internal workflows** that run within this repository itself. These workflows are used for testing and managing the shared-workflows repository, not for use by downstream repositories.
+
+**Convention:**
+- **Public/Reusable workflows** (no underscore): Called by downstream repositories via `uses: richardmsong/shared-workflows/.github/workflows/<name>.yml@v1`
+- **Internal workflows** (underscore prefix): Run only within this repository for testing and internal automation
+
+**Examples:**
+
+| Public Workflow | Internal Workflow | Purpose |
+|----------------|-------------------|---------|
+| `ci.yml` | `_test-ci.yml` | Tests the reusable CI workflow using test fixtures |
+| `tag-release.yml` | `_test-release.yml` | Tests the release workflow in dry-run mode |
+| `claude.yml` | `_claude.yml` | Triggers Claude AI for this repository's issues/PRs |
+| `claude-code-review.yml` | `_claude-code-review.yml` | Enables Claude code review for this repository |
+
+This naming convention makes it immediately clear which workflows are intended for external use and which are for internal repository management.
+
 ## Quick Start
 
 ### CI Workflow

@@ -1,0 +1,12 @@
+# Internal workflow - automatically creates PRs for claude/* branches
+name: Auto PR (Internal)
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+
+jobs:
+  auto-pr:
+    uses: ./.github/workflows/auto-pr.yml
+    secrets: inherit
