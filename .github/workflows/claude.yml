@@ -1,40 +1,13 @@
-# Reusable workflow for Claude AI interaction on issues/PRs/comments
-# Can also be triggered directly on this repo via issues, PRs, and comments
+# Workflow for Claude AI interaction on issues/PRs/comments
 name: Claude Code
 
 on:
-  # Direct triggers for this repository
   issues:
     types: [opened, reopened, edited]
   pull_request:
     types: [opened, reopened, synchronize]
   issue_comment:
     types: [created, edited]
-
-  # Reusable workflow trigger for other repositories
-  # Supports `secrets: inherit` - caller can pass all secrets automatically
-  workflow_call:
-    inputs:
-      allowed-tools:
-        description: 'Allowed tools for Claude Code (comma-separated)'
-        required: false
-        type: string
-        default: 'Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file'
-      additional-permissions:
-        description: 'Additional GitHub API permissions for Claude'
-        required: false
-        type: string
-        default: 'actions: read'
-    secrets:
-      CLAUDE_APP_ID:
-        description: 'Claude GitHub App ID'
-        required: false
-      CLAUDE_APP_PRIVATE_KEY:
-        description: 'Claude GitHub App private key'
-        required: false
-      CLAUDE_CODE_OAUTH_TOKEN:
-        description: 'Claude Code OAuth token'
-        required: true
 
 jobs:
   claude:
@@ -52,15 +25,6 @@ jobs:
           app-id: ${{ secrets.CLAUDE_APP_ID }}
           private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
 
-      - name: Verify App Token
-        run: |
-          if [ -z "${{ steps.app-token.outputs.token }}" ]; then
-            echo "::error::GitHub App token was not generated. Check CLAUDE_APP_ID and CLAUDE_APP_PRIVATE_KEY secrets."
-            echo "Falling back to GITHUB_TOKEN which may have limited permissions."
-          else
-            echo "GitHub App token generated successfully"
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -73,13 +37,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app-token.outputs.token || github.token }}
-
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
-            ${{ inputs.additional-permissions }}
-
-          # Enable Claude to run build/test commands and git operations
-          # This allows commands like 'go mod tidy', 'make test', 'git commit', etc.
-          # See: https://docs.anthropic.com/en/docs/claude-code/cli-reference
+            actions: read
           claude_args: |
-            --allowedTools "${{ inputs.allowed-tools }}"
+            --allowedTools "Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file"
