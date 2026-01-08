@@ -318,6 +318,9 @@ Internal test workflows validate changes:
 
 - `_test-ci.yml` - Tests CI workflow against fixture project
 - `_test-release.yml` - Tests release workflow in dry-run mode
+- `_test-claude-workflows.yml` - Validates Claude workflow configuration and structure
+
+See [Testing Claude Workflows](docs/testing-claude-workflows.md) for detailed information on testing Claude functionality.
 
 ### Contributing
 
