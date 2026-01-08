@@ -44,10 +44,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-        run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
+        run: echo "${{ steps.app-token.outputs.token }} | gh auth login --with-token
 
       - name: Setup Claude Stop Hook
         env:
