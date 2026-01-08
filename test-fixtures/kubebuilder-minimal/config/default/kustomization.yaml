@@ -1,0 +1,15 @@
+# Kustomization for deploying the controller
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: system
+
+namePrefix: kubebuilder-minimal-
+
+resources:
+  - ../manager
+
+images:
+  - name: controller
+    newName: ghcr.io/richardmsong/shared-workflows-test
+    newTag: latest

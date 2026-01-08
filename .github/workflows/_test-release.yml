@@ -1,0 +1,37 @@
+# Internal test workflow to validate tag-release.yml (dry-run mode)
+name: Test Release Workflow
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/tag-release.yml'
+      - '.github/workflows/_test-release.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - '.github/workflows/tag-release.yml'
+      - '.github/workflows/_test-release.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to test (e.g., 1.0.0)'
+        required: true
+        type: string
+        default: '99.99.99'
+
+jobs:
+  test-release:
+    name: Test Release Workflow (Dry Run)
+    uses: ./.github/workflows/tag-release.yml
+    with:
+      version: ${{ inputs.version || '99.99.99' }}
+      dry-run: true
+      update-kustomization: false
+      create-major-branch: true
+      create-minor-branch: true
+    secrets: inherit
