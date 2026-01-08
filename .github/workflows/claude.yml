@@ -33,8 +33,8 @@ on:
         description: 'Claude GitHub App private key'
         required: false
       CLAUDE_CODE_OAUTH_TOKEN:
-        description: 'Claude Code OAuth token'
-        required: true
+        description: 'Claude Code OAuth token (required for Claude to function)'
+        required: false
 
 jobs:
   claude:
