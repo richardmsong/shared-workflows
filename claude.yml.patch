@@ -1,0 +1,52 @@
+--- a/.github/workflows/claude.yml
++++ b/.github/workflows/claude.yml
+@@ -37,9 +37,18 @@ jobs:
+         with:
+           app-id: ${{ secrets.CLAUDE_APP_ID }}
+           private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
+
+-      - name: Setup Claude Stop Hook
++      - name: Checkout repository
++        uses: actions/checkout@v4
++        with:
++          fetch-depth: 0
++          token: ${{ steps.app-token.outputs.token || github.token }}
++
++      - name: Authenticate GitHub CLI
++        env:
++          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+         run: |
++          echo "$GH_TOKEN" | gh auth login --with-token
++
++      - name: Setup Claude Stop Hook
++        env:
++          GITHUB_REPOSITORY: ${{ github.repository }}
++        run: |
+           mkdir -p ~/.config/claude-code
+           cat > ~/.config/claude-code/settings.json <<'EOF'
+           {
+             "hooks": {
+               "Stop": [
+                 {
+-                  "hooks": [
+-                    {
+-                      "type": "command",
+-                      "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD) && STATUS=$(gh run list --branch \"$BRANCH\" --limit 1 --json status,conclusion --jq \".[0] | select(.status == \\\"completed\\\") | .conclusion\") && if [ -z \"$STATUS\" ]; then echo \"CI pipelines still running\" >&2; exit 2; elif [ \"$STATUS\" != \"success\" ]; then echo \"CI failed: $STATUS\" >&2; exit 2; else echo \"CI passed\"; exit 0; fi'"
+-                    }
+-                  ]
++                  "type": "command",
++                  "command": "bash -c 'BRANCH=\"${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}\" && RUN_DATA=$(gh run list --repo \"$GITHUB_REPOSITORY\" --branch \"$BRANCH\" --limit 1 --json status,conclusion,workflowName,htmlUrl) && STATUS=$(echo \"$RUN_DATA\" | jq -r \".[0].status // empty\") && CONCLUSION=$(echo \"$RUN_DATA\" | jq -r \".[0].conclusion // empty\") && WORKFLOW=$(echo \"$RUN_DATA\" | jq -r \".[0].workflowName // empty\") && URL=$(echo \"$RUN_DATA\" | jq -r \".[0].htmlUrl // empty\") && if [ \"$STATUS\" != \"completed\" ] && [ -n \"$STATUS\" ]; then echo \"⏳ CI pipeline \\\"$WORKFLOW\\\" is still running on branch $BRANCH\" >&2; echo \"View: $URL\" >&2; exit 2; elif [ \"$CONCLUSION\" != \"success\" ] && [ -n \"$CONCLUSION\" ]; then echo \"❌ CI pipeline \\\"$WORKFLOW\\\" failed with status: $CONCLUSION\" >&2; echo \"View: $URL\" >&2; echo \"\" >&2; echo \"Please investigate the failure and fix any issues before exiting.\" >&2; exit 1; else echo \"✅ CI pipelines passed\"; exit 0; fi'"
+                 }
+               ]
+             }
+           }
+           EOF
+-
+-      - name: Checkout repository
+-        uses: actions/checkout@v4
+-        with:
+-          fetch-depth: 1
+-          token: ${{ steps.app-token.outputs.token || github.token }}
+
+       - name: Run Claude Code
+         id: claude
