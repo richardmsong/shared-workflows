@@ -37,6 +37,26 @@ jobs:
           app-id: ${{ secrets.CLAUDE_APP_ID }}
           private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
 
+      - name: Setup Claude Stop Hook
+        run: |
+          mkdir -p ~/.config/claude-code
+          cat > ~/.config/claude-code/settings.json <<'EOF'
+          {
+            "hooks": {
+              "Stop": [
+                {
+                  "hooks": [
+                    {
+                      "type": "command",
+                      "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD) && STATUS=$(gh run list --branch \"$BRANCH\" --limit 1 --json status,conclusion --jq \".[0] | select(.status == \\\"completed\\\") | .conclusion\") && if [ -z \"$STATUS\" ]; then echo \"CI pipelines still running\" >&2; exit 2; elif [ \"$STATUS\" != \"success\" ]; then echo \"CI failed: $STATUS\" >&2; exit 2; else echo \"CI passed\"; exit 0; fi'"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+          EOF
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
