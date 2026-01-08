@@ -29,8 +29,8 @@ on:
         description: 'Claude GitHub App private key'
         required: false
       CLAUDE_CODE_OAUTH_TOKEN:
-        description: 'Claude Code OAuth token (required for Claude to function)'
-        required: false
+        description: 'Claude Code OAuth token'
+        required: true
 
 jobs:
   claude-review:
