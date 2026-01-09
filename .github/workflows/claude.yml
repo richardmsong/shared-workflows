@@ -45,6 +45,24 @@ jobs:
       - name: Authenticate GitHub CLI
         run: echo "${{ steps.app-token.outputs.token }}" | gh auth login --with-token
 
+      - name: Post workflow control comment
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          # Only post if there's an issue or PR number
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue comment "$ISSUE_NUMBER" --body "🤖 **Claude is working on this...**
+
+          If you prefer to handle this manually, you can cancel the workflow:
+
+          **[⏹️ Cancel Workflow Run]($WORKFLOW_URL)**
+
+          ---
+          *This workflow will continue unless cancelled. The cancel link allows you to stop Claude and take manual control at any time.*"
+          fi
+
       - name: Setup Claude Stop Hook
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
