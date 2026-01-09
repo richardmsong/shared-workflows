@@ -55,8 +55,9 @@ jobs:
       - name: Get commit info
         id: commit
         run: |
-          # Escape double quotes in title for safe shell usage
-          TITLE=$(git log -1 --format='%s' | sed 's/"/\\"/g')
+          # Use base64 encoding to safely pass title through GitHub outputs
+          # This handles all special characters including quotes, newlines, etc.
+          TITLE=$(git log -1 --format='%s' | base64 -w 0)
           echo "title=$TITLE" >> $GITHUB_OUTPUT
 
           # Use heredoc for body to preserve formatting and special characters
@@ -89,9 +90,12 @@ jobs:
             exit 0
           fi
 
-          # Create the PR
+          # Decode base64-encoded title
+          DECODED_TITLE=$(echo "${{ steps.commit.outputs.title }}" | base64 -d)
+
+          # Create the PR with decoded title
           PR_URL=$(gh pr create \
-            --title "${{ steps.commit.outputs.title }}" \
+            --title "$DECODED_TITLE" \
             --body "${{ steps.commit.outputs.body }}" \
             --head "${{ github.ref_name }}" \
             --base "${{ steps.base.outputs.branch }}")
