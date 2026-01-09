@@ -28,7 +28,7 @@ jobs:
       working-directory: 'test-fixtures/kubebuilder-minimal'
       go-version-file: 'go.mod'
       image-name: 'richardmsong/shared-workflows-test'
-      push-image: true
+      push-image: false
       run-tests: true
       run-lint: true
     secrets: inherit
