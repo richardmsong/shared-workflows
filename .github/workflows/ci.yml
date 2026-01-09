@@ -64,13 +64,6 @@ on:
       image-tags:
         description: 'Docker image tags'
         value: ${{ jobs.docker.outputs.tags }}
-    secrets:
-      CLAUDE_APP_ID:
-        description: 'GitHub App ID for authentication'
-        required: true
-      CLAUDE_APP_PRIVATE_KEY:
-        description: 'GitHub App private key for authentication'
-        required: true
 
 jobs:
   test:
@@ -150,6 +143,9 @@ jobs:
   docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     needs: [test, lint]
     if: |
       always() &&
@@ -164,13 +160,6 @@ jobs:
       REGISTRY: ${{ inputs.registry }}
       IMAGE_NAME: ${{ inputs.image-name && format('{0}/{1}', inputs.registry, inputs.image-name) || format('{0}/{1}', inputs.registry, github.repository) }}
     steps:
-      - name: Generate GitHub App Token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.CLAUDE_APP_ID }}
-          private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -231,7 +220,7 @@ jobs:
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ steps.app-token.outputs.token }}
+          password: ${{ github.token }}
 
       - name: Build and push Docker image
         run: make ${{ inputs.docker-build-target }}
