@@ -58,8 +58,6 @@ jobs:
           echo "title=$(git log -1 --format='%s')" >> $GITHUB_OUTPUT
           echo "body<<EOF" >> $GITHUB_OUTPUT
           git log -1 --format='%b' >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "@claude wait for the workflows to run and then fix any errors if found." >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Determine base branch
@@ -72,6 +70,7 @@ jobs:
           fi
 
       - name: Create Pull Request
+        id: create-pr
         env:
           # Use Claude GitHub App token to allow PR to trigger other workflows (CI, code review)
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -81,12 +80,27 @@ jobs:
 
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR already exists for branch ${{ github.ref_name }}"
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+            echo "pr_existed=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           # Create the PR
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "${{ steps.commit.outputs.title }}" \
             --body "${{ steps.commit.outputs.body }}" \
             --head "${{ github.ref_name }}" \
-            --base "${{ steps.base.outputs.branch }}"
+            --base "${{ steps.base.outputs.branch }}")
+
+          # Extract PR number from URL
+          PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_existed=false" >> $GITHUB_OUTPUT
+
+      - name: Post Claude trigger comment
+        if: steps.create-pr.outputs.pr_existed == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr comment ${{ steps.create-pr.outputs.pr_number }} \
+            --body "@claude wait for the workflows to run and then fix any errors if found."
