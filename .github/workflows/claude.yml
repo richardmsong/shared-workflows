@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Authenticate GitHub CLI
         run: echo "${{ steps.app-token.outputs.token }}" | gh auth login --with-token
