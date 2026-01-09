@@ -13,7 +13,7 @@ on:
         description: 'Allowed tools for Claude Code review'
         required: false
         type: string
-        default: 'Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh api:*)'
+        default: 'mcp__github__create_pending_pull_request_review,mcp__github__add_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__get_pull_request,mcp__github__list_pull_requests,mcp__github__search_code,mcp__github__search_issues,Bash(gh pr checks:*),Bash(gh pr view:*),Bash(gh:*)'
     secrets:
       CLAUDE_APP_ID:
         description: 'Claude GitHub App ID'
@@ -52,46 +52,54 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            IMPORTANT - Edit Previous Reviews to be Shorter:
-            Before writing your new review, use `gh pr view ${{ github.event.pull_request.number }} --json comments` to fetch existing comments.
-            If there are previous Claude Code Review comments that are verbose (comments from @claude-code-for-richardmsong[bot]):
-            1. Identify the comment ID and body for each verbose Claude review comment
-            2. For each verbose comment, create a condensed version that keeps only:
-               - Critical issues and bugs
-               - Actionable suggestions
-               - Final verdict/summary
-               - Remove: excessive explanations, minor observations, redundant context
-            3. Target: condensed comments should be <500 words (aim for 50% or less of original length)
-            4. To safely edit comments, create a temporary file with the condensed content:
-               ```bash
-               echo "$CONDENSED_CONTENT" > /tmp/condensed_comment.txt
-               gh api --method PATCH "/repos/${{ github.repository }}/issues/comments/{comment_id}" --input /tmp/condensed_comment.txt -f body=@-
-               ```
-               This avoids shell injection issues with quotes in the content.
-            5. Error Handling: If editing fails (permissions, locked comments, API limits):
-               - Skip that comment and continue with others
-               - Note in your review that some previous comments couldn't be condensed
-               - Do NOT let edit failures block your new review
+            CRITICAL - Use GitHub MCP Tools for Inline Code Reviews:
+            You MUST use the GitHub MCP server to provide inline code review comments. Follow these steps:
 
-            This helps reduce comment volume in PR threads while preserving key information.
+            1. **Get PR diff**: Use `mcp__github__get_pull_request_diff` to understand the code changes and line numbers
+               - This shows you what lines were added/modified in each file
+               - Note the line numbers for comments
 
-            ${{ inputs.review-prompt || 'Please review this pull request and provide feedback on:
-            - Code quality and best practices
+            2. **Start a pending review**: Use `mcp__github__create_pending_pull_request_review` to begin your review
+               - Set the event type to "COMMENT" (not "REQUEST_CHANGES") to avoid blocking the PR
+               - Save the review_id from the response
+
+            3. **Add inline comments**: Use `mcp__github__add_comment_to_pending_review` for each specific piece of feedback
+               - Include: review_id (from step 2), file path, line number (or start_line/end_line for multi-line), comment body
+               - Make comments specific, actionable, and constructive
+               - Focus on: bugs, security issues, performance problems, best practices violations
+               - **Document your MCP usage**: Before each call, explain what you're doing (e.g., "Adding inline comment about error handling at line 45")
+
+            4. **Submit the review**: Use `mcp__github__submit_pending_pull_request_review` with:
+               - event: "COMMENT" (this prevents blocking the PR merge)
+               - body: A summary of your review findings
+               - **Document completion**: After submitting, confirm the review was posted
+
+            **Review Focus Areas:**
+            ${{ inputs.review-prompt || '- Code quality and best practices
             - Potential bugs or issues
             - Performance considerations
             - Security concerns
             - Test coverage' }}
 
-            CRITICAL - Verify Software Versions Before Claiming They Don't Exist:
-            Before claiming that a software version doesn't exist or hasn't been released, you MUST:
-            1. Search the web for the latest version of the software in question
-            2. Check official sources (GitHub releases, package registries, official documentation)
+            **Best Practices:**
+            - Be constructive and helpful in feedback
+            - Reference specific line numbers in your comments
+            - Provide actionable suggestions with examples when possible
+            - Use the repository's CLAUDE.md for style and convention guidance
+            - Keep inline comments focused and concise
+            - Use the overall review body for high-level observations
+
+            **Version Verification:**
+            Before claiming a software version doesn't exist or hasn't been released:
+            1. Search the web for the latest version
+            2. Check official sources (GitHub releases, package registries, official docs)
             3. Cite your sources when making version-related claims
-            If you cannot verify a version exists, say "I was unable to verify this version" rather than asserting it doesn't exist.
+            4. If you cannot verify a version exists, say "I was unable to verify this version" rather than asserting it doesn't exist
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
-
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            **IMPORTANT - DO NOT use gh CLI for reviews:**
+            - ❌ DO NOT use `gh pr comment` or `gh api` for creating review comments
+            - ✅ ALWAYS use the MCP tools listed above for structured inline reviews
+            - MCP tools provide better integration and proper inline comment placement
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
