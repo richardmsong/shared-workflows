@@ -95,7 +95,9 @@ jobs:
             **Best Practices:**
             - Be constructive and helpful in feedback
             - Reference specific line numbers in your comments
-            - Provide actionable suggestions with examples when possible
+            - Provide actionable suggestions with examples when possible. 
+            - Do not create any comments that do not have actionable suggestions. 
+            - Do not create any comments that only contain praise or affirmation.
             - Use the repository's CLAUDE.md for style and convention guidance
             - Keep inline comments focused and concise
             - Use the overall review body for high-level observations
