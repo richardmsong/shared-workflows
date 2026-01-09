@@ -1,0 +1,4 @@
+Hello, World!
+
+This is a test file to verify the Auto-PR functionality.
+Created for issue #32.
