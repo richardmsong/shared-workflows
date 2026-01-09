@@ -60,10 +60,9 @@ jobs:
           TITLE=$(git log -1 --format='%s' | base64 -w 0)
           echo "title=$TITLE" >> $GITHUB_OUTPUT
 
-          # Use heredoc for body to preserve formatting and special characters
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          git log -1 --format='%b' >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Use base64 encoding for body to safely handle all special characters
+          BODY=$(git log -1 --format='%b' | base64 -w 0)
+          echo "body=$BODY" >> $GITHUB_OUTPUT
 
       - name: Determine base branch
         id: base
@@ -90,13 +89,14 @@ jobs:
             exit 0
           fi
 
-          # Decode base64-encoded title
+          # Decode base64-encoded title and body
           DECODED_TITLE=$(echo "${{ steps.commit.outputs.title }}" | base64 -d)
+          DECODED_BODY=$(echo "${{ steps.commit.outputs.body }}" | base64 -d)
 
-          # Create the PR with decoded title
+          # Create the PR with decoded title and body
           PR_URL=$(gh pr create \
             --title "$DECODED_TITLE" \
-            --body "${{ steps.commit.outputs.body }}" \
+            --body "$DECODED_BODY" \
             --head "${{ github.ref_name }}" \
             --base "${{ steps.base.outputs.branch }}")
 
