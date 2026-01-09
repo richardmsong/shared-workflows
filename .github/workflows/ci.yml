@@ -231,7 +231,7 @@ jobs:
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ steps.app-token.outputs.token }}
 
       - name: Build and push Docker image
         run: make ${{ inputs.docker-build-target }}
