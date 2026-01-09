@@ -158,7 +158,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     env:
       REGISTRY: ${{ inputs.registry }}
-      IMAGE_NAME: ${{ inputs.image-name || github.repository }}
+      IMAGE_NAME: ${{ inputs.registry }}/${{ inputs.image-name || github.repository }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
