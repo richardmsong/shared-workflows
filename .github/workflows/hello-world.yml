@@ -1,0 +1,17 @@
+# Simple workflow that echoes "Hello World"
+name: Hello World
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  hello:
+    name: Echo Hello World
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Hello World
+        run: echo "Hello World"
