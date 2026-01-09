@@ -61,7 +61,7 @@ jobs:
 
           # Use heredoc for body to preserve formatting and special characters
           echo "body<<EOF" >> $GITHUB_OUTPUT
-          git log -1 --format='%b' >> $GITHUB_OUTPUT
+          git log -1 --format='%b' | sed 's/"/\\"/g' >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Determine base branch
