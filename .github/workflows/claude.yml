@@ -8,7 +8,7 @@ on:
         description: 'Allowed tools for Claude Code (comma-separated)'
         required: false
         type: string
-        default: 'Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file,WebFetch,WebSearch'
+        default: 'Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file,WebFetch,WebSearch'
       additional-permissions:
         description: 'Additional GitHub API permissions for Claude'
         required: false
