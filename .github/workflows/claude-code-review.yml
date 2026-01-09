@@ -13,7 +13,18 @@ on:
         description: 'Allowed tools for Claude Code review'
         required: false
         type: string
-        default: 'mcp__github__create_pending_pull_request_review,mcp__github__add_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__get_pull_request,mcp__github__list_pull_requests,mcp__github__search_code,mcp__github__search_issues,Bash(gh pr checks:*),Bash(gh pr view:*),Bash(gh:*)'
+        default: >-
+          mcp__github__create_pending_pull_request_review,
+          mcp__github__add_comment_to_pending_review,
+          mcp__github__submit_pending_pull_request_review,
+          mcp__github__get_pull_request_diff,
+          mcp__github__get_pull_request,
+          mcp__github__list_pull_requests,
+          mcp__github__search_code,
+          mcp__github__search_issues,
+          Bash(gh pr checks:*),
+          Bash(gh pr view:*),
+          Bash(gh:*)
     secrets:
       CLAUDE_APP_ID:
         description: 'Claude GitHub App ID'
