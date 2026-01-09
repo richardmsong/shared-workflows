@@ -55,7 +55,11 @@ jobs:
       - name: Get commit info
         id: commit
         run: |
-          echo "title=$(git log -1 --format='%s')" >> $GITHUB_OUTPUT
+          # Escape double quotes in title for safe shell usage
+          TITLE=$(git log -1 --format='%s' | sed 's/"/\\"/g')
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+
+          # Use heredoc for body to preserve formatting and special characters
           echo "body<<EOF" >> $GITHUB_OUTPUT
           git log -1 --format='%b' >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
