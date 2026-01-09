@@ -8,16 +8,9 @@ on:
       - master
     paths:
       - '.github/workflows/ci.yml'
-      - '.github/workflows/_test-ci.yml'
+      - '.github/workflows/_ci.yml'
       - 'test-fixtures/kubebuilder-minimal/**'
   pull_request:
-    branches:
-      - main
-      - master
-    paths:
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/_test-ci.yml'
-      - 'test-fixtures/kubebuilder-minimal/**'
   workflow_dispatch:
 
 jobs:
