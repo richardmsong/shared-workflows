@@ -22,54 +22,15 @@ This repository contains reusable GitHub Actions workflows:
 - `.github/workflows/_test-ci.yml` - Test workflow that validates the CI workflow
 - `test-fixtures/` - Test fixtures used to validate workflows
 
-## GitHub App Authentication Requirements
+## Authentication in Workflows
 
-**CRITICAL: All workflows must use GitHub App authentication exclusively.**
+This repository's workflows use different authentication methods depending on the operation:
 
-All permissions are controlled via the GitHub App. To ensure workflows function correctly:
+### For Claude's Operations (Editing Files, Creating PRs, etc.)
+**Use GitHub App authentication exclusively.**
 
-### Understanding github.token
-- The `github.token` context variable represents **repository delegated permissions** from the GitHub App
-- When a GitHub App is installed on a repository, `github.token` contains the App's delegated token, not the default GITHUB_TOKEN
-- This means `github.token` is **safe to use** and represents the GitHub App's permissions
-- See [GitHub's documentation on repository delegated permissions](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app#repository-delegated-permissions)
+When Claude needs to interact with the repository (creating PRs, pushing commits to branches, etc.), use the GitHub App token:
 
-### Using permissions blocks
-- You **may** add `permissions:` blocks to job definitions when needed
-- Permissions blocks are required for certain operations like pushing packages
-- The permissions you request must be within the scope granted to the GitHub App
-
-### DO NOT use GITHUB_TOKEN secret
-- **Never** use `secrets.GITHUB_TOKEN` as it bypasses the GitHub App
-- Always use `github.token` (delegated App permissions) or generate tokens via `actions/create-github-app-token@v1`
-
-### DO NOT use continue-on-error for App token generation
-- App token generation steps must not have `continue-on-error: true`
-- If the App token generation fails, the workflow should fail
-- This ensures we never silently fall back to GITHUB_TOKEN
-
-### Correct Patterns for GitHub App Authentication
-
-#### Using github.token (delegated App permissions)
-```yaml
-jobs:
-  my-job:
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-```
-
-#### Generating explicit App token
 ```yaml
 steps:
   - name: Generate GitHub App Token
@@ -90,25 +51,61 @@ steps:
     run: gh pr create ...
 ```
 
+**DO NOT use continue-on-error for App token generation:**
+- App token generation steps must not have `continue-on-error: true`
+- If the App token generation fails, the workflow should fail
+- This ensures we never silently fall back to GITHUB_TOKEN
+
+### For Repository Operations (Pushing Packages, etc.)
+**Use the workflow's own GITHUB_TOKEN.**
+
+For operations where the repository itself should be the actor (like pushing Docker images to GHCR), use `secrets.GITHUB_TOKEN`:
+
+```yaml
+jobs:
+  docker:
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Rationale:** Package operations should appear as coming from the repository itself, not from Claude's GitHub App. This maintains clear ownership and permissions boundaries.
+
+### Using permissions blocks
+- You **may** add `permissions:` blocks to job definitions when needed
+- Permissions blocks are required for certain operations like pushing packages
+- The permissions you request apply to the `GITHUB_TOKEN` for that job
+
 ### Incorrect Patterns (DO NOT USE)
 
 ```yaml
-# ❌ WRONG - GITHUB_TOKEN secret
-token: ${{ secrets.GITHUB_TOKEN }}
-
-# ❌ WRONG - GITHUB_TOKEN fallback
+# ❌ WRONG - GITHUB_TOKEN fallback for App operations
 token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
 # ❌ WRONG - continue-on-error on token generation
 - name: Generate GitHub App Token
   continue-on-error: true
   uses: actions/create-github-app-token@v1
+
+# ❌ WRONG - Using App token for package operations
+# (packages should be pushed by the repository, not Claude's App)
+password: ${{ steps.app-token.outputs.token }}
 ```
 
 ## Important Notes
 
 - When updating workflows, ensure changes are tested via the `_test-ci.yml` workflow
 - Follow GitHub Actions best practices for reusable workflows
-- All workflows must use GitHub App authentication exclusively - never use `secrets.GITHUB_TOKEN`
-- Use `github.token` for delegated App permissions (safe and recommended)
+- Use GitHub App authentication for Claude's operations (PRs, commits, etc.)
+- Use `secrets.GITHUB_TOKEN` for repository operations (pushing packages, etc.)
 - Add permissions blocks when needed for operations like pushing packages
