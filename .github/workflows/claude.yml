@@ -73,3 +73,8 @@ jobs:
           additional_permissions: ${{ inputs.additional-permissions }}
           claude_args: --allowedTools "${{ inputs.allowed-tools }}"
           allowed_bots: 'claude-code-for-richardmsong[bot]'
+          append_system_prompt: |
+
+            ---
+
+            **Workflow Control**: If you prefer manual control, you can [⏹️ Cancel Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
