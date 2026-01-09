@@ -31,4 +31,3 @@ jobs:
       push-image: false
       run-tests: true
       run-lint: true
-    secrets: inherit
