@@ -227,15 +227,14 @@ jobs:
           echo "Generated tags: ${TAGS}"
 
       - name: Log in to GitHub Container Registry
-        if: ${{ inputs.push-image && github.event_name != 'pull_request' }}
         uses: docker/login-action@v3
         with:
           registry: ${{ inputs.registry }}
           username: ${{ github.actor }}
-          password: ${{ steps.app-token.outputs.token }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         run: make ${{ inputs.docker-build-target }}
         env:
           DOCKER_TAGS: ${{ steps.tags.outputs.tags }}
-          DOCKER_PUSH: ${{ inputs.push-image && github.event_name != 'pull_request' && '1' || '' }}
+          DOCKER_PUSH: ${{ inputs.push-image && '1' || '' }}
