@@ -54,7 +54,7 @@ jobs:
 
             IMPORTANT - Edit Previous Reviews to be Shorter:
             Before writing your new review, use `gh pr view ${{ github.event.pull_request.number }} --json comments` to fetch existing comments.
-            If there are previous Claude Code Review comments that are verbose (comments from github-actions bot or containing "Claude Code Review"):
+            If there are previous Claude Code Review comments that are verbose (comments from @claude-code-for-richardmsong[bot]):
             1. Identify the comment ID and body for each verbose Claude review comment
             2. For each verbose comment, create a condensed version that keeps only:
                - Critical issues and bugs
