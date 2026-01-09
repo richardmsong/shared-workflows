@@ -162,7 +162,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     env:
       REGISTRY: ${{ inputs.registry }}
-      IMAGE_NAME: ${{ inputs.registry }}/${{ inputs.image-name || github.repository }}
+      IMAGE_NAME: ${{ inputs.image-name && format('{0}/{1}', inputs.registry, inputs.image-name) || format('{0}/{1}', inputs.registry, github.repository) }}
     steps:
       - name: Generate GitHub App Token
         id: app-token
