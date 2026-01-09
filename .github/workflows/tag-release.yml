@@ -48,9 +48,12 @@ on:
         description: 'The created tag'
         value: ${{ jobs.release.outputs.tag }}
     secrets:
-      RELEASE_TOKEN:
-        description: 'Token with permissions to push tags and branches (defaults to GITHUB_TOKEN)'
-        required: false
+      CLAUDE_APP_ID:
+        description: 'GitHub App ID for authentication'
+        required: true
+      CLAUDE_APP_PRIVATE_KEY:
+        description: 'GitHub App private key for authentication'
+        required: true
 
 jobs:
   release:
@@ -64,12 +67,19 @@ jobs:
     env:
       DRY_RUN: ${{ inputs.dry-run }}
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CLAUDE_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Determine version
         id: version
@@ -115,12 +125,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
 
       - name: Install Kustomize
         if: ${{ inputs.update-kustomization }}
