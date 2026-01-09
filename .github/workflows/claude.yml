@@ -50,3 +50,4 @@ jobs:
           github_token: ${{ steps.app-token.outputs.token }}
           additional_permissions: ${{ inputs.additional-permissions }}
           claude_args: --allowedTools "${{ inputs.allowed-tools }}"
+          allowed_bots: '*'
