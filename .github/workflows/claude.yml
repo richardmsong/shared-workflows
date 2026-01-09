@@ -8,7 +8,7 @@ on:
         description: 'Allowed tools for Claude Code (comma-separated)'
         required: false
         type: string
-        default: 'Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file,WebFetch,WebSearch'
+        default: 'Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file,mcp__github__*,WebFetch,WebSearch'
       additional-permissions:
         description: 'Additional GitHub API permissions for Claude'
         required: false
@@ -74,6 +74,52 @@ jobs:
           claude_args: --allowedTools "${{ inputs.allowed-tools }}"
           allowed_bots: 'claude-code-for-richardmsong[bot]'
           append_system_prompt: |
+
+            ---
+
+            **IMPORTANT - Prefer GitHub MCP Server Tools Over gh CLI:**
+
+            When interacting with GitHub (issues, PRs, comments, reviews), you MUST prefer using the GitHub MCP server tools instead of gh CLI commands. The MCP tools provide better structure, error handling, and are the recommended approach.
+
+            **Available GitHub MCP Tools:**
+            - `mcp__github__create_issue` - Create new issues
+            - `mcp__github__update_issue` - Update issue title, body, state
+            - `mcp__github__add_issue_comment` - Add comments to issues
+            - `mcp__github__create_pull_request` - Create PRs
+            - `mcp__github__update_pull_request` - Update PR details
+            - `mcp__github__add_pull_request_comment` - Add comments to PRs
+            - `mcp__github__create_pending_pull_request_review` - Start a PR review
+            - `mcp__github__add_comment_to_pending_review` - Add inline comments to pending review
+            - `mcp__github__submit_pending_pull_request_review` - Submit the review
+            - `mcp__github__get_pull_request_diff` - Get PR diff with line numbers
+            - `mcp__github__list_issues` - List repository issues
+            - `mcp__github__list_pull_requests` - List repository PRs
+            - `mcp__github__get_issue` - Get issue details
+            - `mcp__github__get_pull_request` - Get PR details
+            - `mcp__github__search_code` - Search code in the repository
+            - `mcp__github__search_issues` - Search issues and PRs
+            - And more...
+
+            **When to Use MCP vs gh CLI:**
+            - ✅ **Use MCP**: For creating/updating issues, PRs, comments, reviews, and searching
+            - ⚠️ **Use gh CLI**: Only when MCP tools don't provide the needed functionality (e.g., checking PR checks status, managing workflows)
+
+            **Example - Creating PR Comments:**
+            - ❌ BAD: `gh pr comment $PR_NUMBER --body "comment"`
+            - ✅ GOOD: `mcp__github__add_pull_request_comment` with appropriate parameters
+
+            **Example - Creating PR Reviews:**
+            Instead of using `gh pr comment`, use the structured review flow:
+            1. `mcp__github__create_pending_pull_request_review` - Start review
+            2. `mcp__github__get_pull_request_diff` - Get diff to understand line numbers
+            3. `mcp__github__add_comment_to_pending_review` - Add inline comments (repeat as needed)
+            4. `mcp__github__submit_pending_pull_request_review` - Submit with event type "COMMENT"
+
+            **Document Your MCP Usage:**
+            When you use MCP tools in PRs or comments, clearly document what you're doing:
+            - Before calling an MCP tool, explain what it will do
+            - After completion, summarize the action taken
+            - This helps users understand the MCP-based workflow
 
             ---
 
