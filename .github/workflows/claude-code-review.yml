@@ -13,6 +13,11 @@ on:
         description: 'Allowed tools for Claude Code review'
         required: false
         type: string
+        # This workflow explicitly lists specific MCP tools to restrict access
+        # because this agent is designed for read-only code review operations:
+        # reading diffs, creating review comments, searching code/issues.
+        # It should NOT make changes to code, branches, or repository state.
+        # For read-write operations, see claude.yml which grants broader access.
         default: >-
           mcp__github__create_pending_pull_request_review,
           mcp__github__add_comment_to_pending_review,
