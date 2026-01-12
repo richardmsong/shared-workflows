@@ -3,9 +3,10 @@ name: Claude Code Review (Internal)
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, labeled]
 
 jobs:
   review:
+    if: contains(github.event.pull_request.labels.*.name, 'review-with-claude')
     uses: ./.github/workflows/claude-code-review.yml
     secrets: inherit
