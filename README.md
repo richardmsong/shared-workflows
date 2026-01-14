@@ -256,7 +256,7 @@ Claude AI interaction workflow for issues, PRs, and comments.
 | `allowed-tools` | string | See below | Allowed tools for Claude Code |
 | `additional-permissions` | string | `actions: read` | Additional GitHub API permissions |
 
-Default allowed tools: `Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file,mcp__github__*,WebFetch,WebSearch`
+Default allowed tools: `Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),Bash(golangci-lint:*),mcp__codesign__sign_file,mcp__github__*,WebFetch,WebSearch`
 
 > **Note:** The `mcp__github__*` wildcard grants blanket access to all GitHub MCP tools. This is intentional because the Claude workflow is designed for read-write operations (creating issues, PRs, commits, etc.). Real security is enforced by your GitHub App permissions, not this allowlist.
 
