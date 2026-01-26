@@ -256,7 +256,9 @@ Claude AI interaction workflow for issues, PRs, and comments.
 | `allowed-tools` | string | See below | Allowed tools for Claude Code |
 | `additional-permissions` | string | `actions: read` | Additional GitHub API permissions |
 
-Default allowed tools: `Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file`
+Default allowed tools: `Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),Bash(golangci-lint:*),mcp__codesign__sign_file,mcp__github__*,WebFetch,WebSearch`
+
+> **Note:** The `mcp__github__*` wildcard grants blanket access to all GitHub MCP tools. This is intentional because the Claude workflow is designed for read-write operations (creating issues, PRs, commits, etc.). Real security is enforced by your GitHub App permissions, not this allowlist.
 
 #### Secrets
 
@@ -277,7 +279,24 @@ Automated code review workflow using Claude.
 | `review-prompt` | string | `''` | Custom review prompt (optional) |
 | `allowed-tools` | string | See below | Allowed tools for Claude Code review |
 
-Default allowed tools: `Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh api:*)`
+Default allowed tools:
+```
+mcp__github__create_pending_pull_request_review,
+mcp__github__add_comment_to_pending_review,
+mcp__github__submit_pending_pull_request_review,
+mcp__github__get_pull_request_diff,
+mcp__github__get_pull_request_files,
+mcp__github__get_pull_request_review_comments,
+mcp__github__get_pull_request,
+mcp__github__list_pull_requests,
+mcp__github__search_code,
+mcp__github__search_issues,
+Bash(gh pr checks:*),
+Bash(gh pr view:*),
+Bash(gh:*)
+```
+
+> **Note:** Unlike the main `claude.yml` workflow, this review workflow uses granular MCP permissions because it's designed for read-only code review operations. It should NOT make changes to code, branches, or repository state.
 
 #### Secrets
 
