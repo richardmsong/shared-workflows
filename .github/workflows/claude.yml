@@ -83,7 +83,7 @@ jobs:
           additional_permissions: ${{ inputs.additional-permissions }}
           claude_args: --allowedTools "${{ inputs.allowed-tools }}" --model "${{ inputs.model }}"
           allowed_bots: 'claude-code-for-richardmsong[bot]'
-          prompt: |
+          append_system_prompt: |
 
             ---
 
