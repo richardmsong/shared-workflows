@@ -15,11 +15,6 @@ on:
         required: false
         type: boolean
         default: false
-      image-name:
-        description: 'Docker image name for kustomization update (e.g., ghcr.io/org/repo)'
-        required: false
-        type: string
-        default: ''
       kustomization-path:
         description: 'Path to kustomization.yaml directory'
         required: false
@@ -140,29 +135,42 @@ jobs:
 
       - name: Update kustomization.yaml with version tag
         id: update_kustomization
-        if: ${{ inputs.update-kustomization && inputs.image-name != '' }}
+        if: ${{ inputs.update-kustomization }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          DOCKER_IMAGE="${{ inputs.image-name }}:${VERSION}"
+          KUSTOMIZATION_PATH="${{ inputs.kustomization-path }}"
 
-          cd ${{ inputs.kustomization-path }}
-          ../../bin/kustomize edit set image controller=${DOCKER_IMAGE}
+          cd "${KUSTOMIZATION_PATH}"
+
+          # Read existing image name from kustomization.yaml
+          EXISTING_IMAGE=$(grep -A2 "name: controller" kustomization.yaml | grep "newName:" | awk '{print $2}')
+
+          if [[ -z "$EXISTING_IMAGE" ]]; then
+            echo "Error: Could not find existing image name in kustomization.yaml"
+            echo "Make sure kustomization.yaml has an images entry with 'name: controller' and 'newName: <image>'"
+            exit 1
+          fi
+
+          echo "Found existing image: ${EXISTING_IMAGE}"
+
+          # Update only the tag using kustomize
+          ../../bin/kustomize edit set image controller=${EXISTING_IMAGE}:${VERSION}
 
           echo "Updated kustomization.yaml:"
           cat kustomization.yaml
 
           cd -
 
-          echo "docker_image=${DOCKER_IMAGE}" >> $GITHUB_OUTPUT
+          echo "docker_image=${EXISTING_IMAGE}:${VERSION}" >> $GITHUB_OUTPUT
 
           # Check if there are actual changes
-          if git diff --quiet ${{ inputs.kustomization-path }}/kustomization.yaml; then
+          if git diff --quiet "${KUSTOMIZATION_PATH}/kustomization.yaml"; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo ""
             echo "Changes to be committed:"
-            git diff ${{ inputs.kustomization-path }}/kustomization.yaml
+            git diff "${KUSTOMIZATION_PATH}/kustomization.yaml"
           fi
 
       - name: Commit version update
