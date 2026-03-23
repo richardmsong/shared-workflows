@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       image-name:
-        description: 'Docker image name for kustomization update (e.g., ghcr.io/org/repo)'
+        description: 'Docker image name for kustomization update. Defaults to ghcr.io/<repository> if not specified.'
         required: false
         type: string
         default: ''
@@ -126,6 +126,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Determine image name
+        id: image
+        if: ${{ inputs.update-kustomization }}
+        run: |
+          if [[ -n "${{ inputs.image-name }}" ]]; then
+            IMAGE_NAME="${{ inputs.image-name }}"
+          else
+            # Default to ghcr.io/<repository> if not provided
+            IMAGE_NAME="ghcr.io/${{ github.repository }}"
+            echo "::notice::Using default image name: ${IMAGE_NAME}"
+          fi
+          echo "name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "Image name: ${IMAGE_NAME}"
+
       - name: Install Kustomize
         if: ${{ inputs.update-kustomization }}
         run: |
@@ -140,10 +154,10 @@ jobs:
 
       - name: Update kustomization.yaml with version tag
         id: update_kustomization
-        if: ${{ inputs.update-kustomization && inputs.image-name != '' }}
+        if: ${{ inputs.update-kustomization }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          DOCKER_IMAGE="${{ inputs.image-name }}:${VERSION}"
+          DOCKER_IMAGE="${{ steps.image.outputs.name }}:${VERSION}"
 
           cd ${{ inputs.kustomization-path }}
           ../../bin/kustomize edit set image controller=${DOCKER_IMAGE}
