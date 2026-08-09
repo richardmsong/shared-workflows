@@ -18,7 +18,7 @@ on:
         # creating/updating issues, PRs, branches, pushing commits, etc.
         # For read-only review workflows, see claude-code-review.yml which restricts
         # to specific MCP tools needed only for commenting.
-        default: 'Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),mcp__codesign__sign_file,mcp__github__*,WebFetch,WebSearch'
+        default: 'Bash(gh:*),Bash(go:*),Bash(make:*),Bash(git:*),Bash(npm:*),Bash(cargo:*),Bash(golangci-lint:*),mcp__codesign__sign_file,mcp__github__*,WebFetch,WebSearch'
       additional-permissions:
         description: 'Additional GitHub API permissions for Claude'
         required: false
